@@ -17,11 +17,8 @@ namespace DeathTunes
     public class DeathTunesPlugin : BaseUnityPlugin
     {
         public static DeathTunesPlugin Instance;
-
         public static ManualLogSource Log;
-
         public static AudioSource AudioSource;
-
         public static BepInEx.Configuration.ConfigEntry<string> SavedDeathSound;
 
         public static Dictionary<ulong, bool> LastDeathState =
@@ -30,7 +27,6 @@ namespace DeathTunes
         private void Awake()
         {
             Instance = this;
-
             Log = Logger;
 
             SavedDeathSound =
@@ -41,9 +37,7 @@ namespace DeathTunes
                     "The selected death sound for this player."
                 );
 
-            Log.LogInfo(
-                "DeathTunes starting..."
-            );
+            Log.LogInfo("DeathTunes starting...");
 
             Log.LogInfo(
                 "DLL location: " +
@@ -53,23 +47,16 @@ namespace DeathTunes
             );
 
             DeathCustomizationManager.LoadSounds();
-
             DeathSoundNetworking.Initialize();
 
             Harmony harmony =
-                new Harmony(
-                    "ryang.deathtunes"
-                );
+                new Harmony("ryang.deathtunes");
 
             harmony.PatchAll();
 
-            StartCoroutine(
-                CreateAudioSource()
-            );
+            StartCoroutine(CreateAudioSource());
 
-            Log.LogInfo(
-                "DeathTunes loaded!"
-            );
+            Log.LogInfo("DeathTunes loaded!");
         }
 
         private void Update()
@@ -84,35 +71,24 @@ namespace DeathTunes
 
             if (StartOfRound.Instance == null)
             {
-                Log.LogInfo(
-                    "Waiting for StartOfRound..."
-                );
-
+                Log.LogInfo("Waiting for StartOfRound...");
                 return;
             }
 
-            Log.LogInfo(
-                "StartOfRound exists"
-            );
+            Log.LogInfo("StartOfRound exists");
 
             PlayerControllerB player =
                 StartOfRound.Instance.localPlayerController;
 
             if (player == null)
             {
-                Log.LogInfo(
-                    "Waiting for local player..."
-                );
-
+                Log.LogInfo("Waiting for local player...");
                 return;
             }
 
-            Log.LogInfo(
-                "Local player found!"
-            );
+            Log.LogInfo("Local player found!");
 
-            ulong steamID =
-                player.playerSteamId;
+            ulong steamID = player.playerSteamId;
 
             DeathSoundNetworking.SendSelection(
                 steamID,
@@ -135,9 +111,7 @@ namespace DeathTunes
 
             CreateAudioObject();
 
-            Log.LogInfo(
-                "DeathTunes AudioSource created"
-            );
+            Log.LogInfo("DeathTunes AudioSource created");
         }
 
         public static void CreateAudioObject()
@@ -146,13 +120,9 @@ namespace DeathTunes
                 return;
 
             GameObject audioObject =
-                new GameObject(
-                    "DeathTunesAudio"
-                );
+                new GameObject("DeathTunesAudio");
 
-            DontDestroyOnLoad(
-                audioObject
-            );
+            DontDestroyOnLoad(audioObject);
 
             AudioSource =
                 audioObject.AddComponent<AudioSource>();
@@ -190,31 +160,21 @@ namespace DeathTunes
 
                 if (request.result != UnityWebRequest.Result.Success)
                 {
-                    Log.LogError(
-                        request.error
-                    );
-
+                    Log.LogError(request.error);
                     return null;
                 }
 
                 AudioClip clip =
-                    DownloadHandlerAudioClip.GetContent(
-                        request
-                    );
+                    DownloadHandlerAudioClip.GetContent(request);
 
                 clip.name =
-                    Path.GetFileNameWithoutExtension(
-                        path
-                    );
+                    Path.GetFileNameWithoutExtension(path);
 
                 return clip;
             }
             catch (Exception e)
             {
-                Log.LogError(
-                    e.Message
-                );
-
+                Log.LogError(e.Message);
                 return null;
             }
         }
@@ -223,30 +183,20 @@ namespace DeathTunes
         {
             if (clip == null)
             {
-                Log.LogError(
-                    "Tried to play NULL clip"
-                );
-
+                Log.LogError("Tried to play NULL clip");
                 return;
             }
 
             if (AudioSource == null)
-            {
                 CreateAudioObject();
-            }
 
             AudioSource.Stop();
-
-            AudioSource.clip =
-                clip;
-
+            AudioSource.clip = clip;
             AudioSource.volume = 1f;
-
             AudioSource.Play();
 
             Log.LogInfo(
-                "Playing death sound: "
-                + clip.name
+                "Playing death sound: " + clip.name
             );
         }
     }

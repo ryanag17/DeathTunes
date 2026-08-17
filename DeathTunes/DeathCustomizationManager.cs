@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using LethalNetworkAPI;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,78 +7,121 @@ using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using LethalNetworkAPI;
 
 namespace DeathTunes
 {
     public static class DeathCustomizationManager
     {
-
-        public static Dictionary<string, AudioClip> Sounds =
-            new Dictionary<string, AudioClip>();
-
-        public static List<string> SoundIDs =
-            new List<string>();
-
+        public static Dictionary<string, AudioClip> Sounds = new Dictionary<string, AudioClip>();
+        public static List<string> SoundIDs = new List<string>();
         public static string SelectedSound = "";
-
         private static int soundIndex = 0;
-
         public static string PendingSoundSelection = null;
 
         public static int CurrentSoundIndex
         {
-            get
-            {
-                return soundIndex;
-            }
+            get { return soundIndex; }
         }
 
         private static GameObject menu;
+        private static TextMeshProUGUI soundNameText;
+        private static TextMeshProUGUI soundCounterText;
+        private static Button previousButton;
+        private static Button nextButton;
+        private static Button previewButton;
+        private static Button saveButton;
+        private static Button closeButton;
+        private static bool menuCreated = false;
+        private static TMP_FontAsset gameFont;
+
+        private static readonly Color BackgroundColor = new Color32(0, 0, 0, 235);
+        private static readonly Color PanelColor = new Color32(0, 0, 0, 255);
+        private static readonly Color RedColor = new Color32(247, 0, 7, 255);
+        private static readonly Color SecondaryRedColor = new Color32(240, 0, 7, 250);
+        private static readonly Color BlackColor = new Color32(0, 0, 0, 255);
+        private static readonly Color WhiteColor = new Color32(255, 255, 255, 255);
+        private static readonly Color DisabledColor = new Color32(45, 45, 45, 180);
+
+        private static void LoadGameFont()
+        {
+            if (gameFont != null)
+                return;
+
+            TMP_FontAsset[] fonts = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
+
+            foreach (TMP_FontAsset font in fonts)
+            {
+                if (font == null)
+                    continue;
+
+                if (font.name.Equals("3270-Regular", StringComparison.OrdinalIgnoreCase))
+                {
+                    gameFont = font;
+                    break;
+                }
+            }
+
+            if (gameFont == null)
+            {
+                foreach (TMP_FontAsset font in fonts)
+                {
+                    if (font == null)
+                        continue;
+
+                    if (font.name.IndexOf("3270", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        gameFont = font;
+                        break;
+                    }
+                }
+            }
+
+            if (gameFont != null)
+            {
+                DeathTunesPlugin.Log.LogInfo(
+                    "DeathTunes using game font: " + gameFont.name
+                );
+            }
+            else
+            {
+                DeathTunesPlugin.Log.LogWarning(
+                    "3270-Regular font could not be found. Using default TMP font."
+                );
+            }
+        }
 
         private static void SendPlayerSound(PlayerControllerB player)
         {
-            ulong steamID =
-                player.playerSteamId;
+            if (player == null)
+                return;
+
+            ulong steamID = player.playerSteamId;
 
             DeathTunesPlugin.Log.LogInfo(
-                "Sending sound '" +
-                SelectedSound +
-                "' for SteamID " +
-                steamID
+                "Sending sound '" + SelectedSound + "' for SteamID " + steamID
             );
 
-            DeathSoundNetworking.SendSelection(
-                steamID,
-                SelectedSound
-            );
+            DeathSoundNetworking.SendSelection(steamID, SelectedSound);
         }
 
         public static void LoadSounds()
         {
+            LoadGameFont();
 
-            string folder =
-                Path.GetDirectoryName(
-                    Assembly.GetExecutingAssembly().Location
-                );
-
-            List<string> files =
-                new List<string>();
-
-            DeathTunesPlugin.Log.LogInfo(
-                "Searching for death sounds..."
+            string folder = Path.GetDirectoryName(
+                Assembly.GetExecutingAssembly().Location
             );
 
-            string soundsFolder =
-                Path.Combine(
-                    folder,
-                    "Sounds"
-                );
+            List<string> files = new List<string>();
+
+            DeathTunesPlugin.Log.LogInfo("Searching for death sounds...");
+
+            string soundsFolder = Path.Combine(folder, "Sounds");
 
             if (Directory.Exists(soundsFolder))
             {
-
                 files.AddRange(
                     Directory.GetFiles(
                         soundsFolder,
@@ -85,7 +129,6 @@ namespace DeathTunes
                         SearchOption.AllDirectories
                     )
                 );
-
             }
 
             files.AddRange(
@@ -96,66 +139,49 @@ namespace DeathTunes
                 )
             );
 
-            files =
-                files
-                .Distinct()
-                .ToList();
+            files = files.Distinct().ToList();
 
             foreach (string file in files)
             {
-                AudioClip clip =
-                    DeathTunesPlugin.Instance.LoadWav(file);
+                AudioClip clip = DeathTunesPlugin.Instance.LoadWav(file);
 
                 if (clip != null)
                 {
-
-                    string id =
-                        Path.GetFileNameWithoutExtension(file);
+                    string id = Path.GetFileNameWithoutExtension(file);
 
                     if (!Sounds.ContainsKey(id))
                     {
-                        Sounds.Add(
-                            id,
-                            clip
-                        );
-
-                        SoundIDs.Add(
-                            id
-                        );
+                        Sounds.Add(id, clip);
+                        SoundIDs.Add(id);
 
                         DeathTunesPlugin.Log.LogInfo(
-                            "Loaded death sound: "
-                            + id
+                            "Loaded death sound: " + id
                         );
-
                     }
-
                 }
-
             }
 
             if (SoundIDs.Count > 0)
             {
-                string saved =
-                    DeathTunesPlugin.SavedDeathSound.Value;
+                string saved = DeathTunesPlugin.SavedDeathSound.Value;
 
-                if (
-                    !string.IsNullOrEmpty(saved)
-                    &&
-                    Sounds.ContainsKey(saved)
-                )
+                if (!string.IsNullOrEmpty(saved) && Sounds.ContainsKey(saved))
                 {
                     SelectedSound = saved;
+                    soundIndex = SoundIDs.IndexOf(saved);
+
+                    if (soundIndex < 0)
+                        soundIndex = 0;
                 }
                 else
                 {
                     SelectedSound = SoundIDs[0];
+                    soundIndex = 0;
                 }
             }
 
             DeathTunesPlugin.Log.LogInfo(
-                "Total death sounds loaded: "
-                + Sounds.Count
+                "Total death sounds loaded: " + Sounds.Count
             );
         }
 
@@ -164,141 +190,263 @@ namespace DeathTunes
             if (menu != null)
             {
                 menu.SetActive(true);
+                UpdateMenuDisplay();
                 return;
             }
 
-            menu =
-                new GameObject(
-                    "DeathTunesMenu"
-                );
+            CreateMenu();
+            menu.SetActive(true);
+            UpdateMenuDisplay();
+        }
 
-            Canvas canvas =
-                menu.AddComponent<Canvas>();
+        private static void CreateMenu()
+        {
+            if (menuCreated)
+                return;
 
-            canvas.renderMode =
-                RenderMode.ScreenSpaceOverlay;
+            menuCreated = true;
+            LoadGameFont();
 
-            CanvasScaler scaler =
-                menu.AddComponent<CanvasScaler>();
+            menu = new GameObject("DeathTunesMenu");
 
-            scaler.uiScaleMode =
-                CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            Canvas canvas = menu.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 5000;
+
+            CanvasScaler scaler = menu.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
 
             menu.AddComponent<GraphicRaycaster>();
+            UnityEngine.Object.DontDestroyOnLoad(menu);
 
-            GameObject background =
-                CreatePanel(
-                    menu.transform,
-                    new Vector2(500, 300),
-                    new Vector2(0, 0)
-                );
+            GameObject overlay = CreatePanel(
+                menu.transform,
+                Vector2.zero,
+                Vector2.zero,
+                BackgroundColor
+            );
 
-            Image bgImage =
-                background.GetComponent<Image>();
+            RectTransform overlayRect = overlay.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
 
-            bgImage.color =
-                new Color(
-                    0,
-                    0,
-                    0,
-                    0.85f
-                );
+            GameObject panel = CreatePanel(
+                menu.transform,
+                new Vector2(760, 570),
+                Vector2.zero,
+                PanelColor
+            );
 
-            GameObject title =
-                CreateText(
-                    background.transform,
-                    "Choose Death Sound",
-                    32,
-                    new Vector2(0, 100)
-                );
+            AddBorder(panel, RedColor, 2f);
 
-            GameObject soundText =
-                CreateText(
-                    background.transform,
-                    "",
-                    24,
-                    new Vector2(0, 20)
-                );
+            GameObject title = CreateText(
+                panel.transform,
+                "DEATHTUNES",
+                44,
+                new Vector2(0, 215),
+                RedColor
+            );
 
-            TextMeshProUGUI soundLabel =
+            TextMeshProUGUI titleText =
+                title.GetComponent<TextMeshProUGUI>();
+
+            titleText.fontStyle = FontStyles.Bold;
+            titleText.characterSpacing = 3f;
+
+            GameObject subtitle = CreateText(
+                panel.transform,
+                "DEATH SOUND CUSTOMIZATION",
+                20,
+                new Vector2(0, 175),
+                RedColor
+            );
+
+            subtitle.GetComponent<TextMeshProUGUI>().fontStyle =
+                FontStyles.Bold;
+
+            CreateDivider(
+                panel.transform,
+                new Vector2(0, 145)
+            );
+
+            GameObject selectText = CreateText(
+                panel.transform,
+                "SELECT SOUND",
+                21,
+                new Vector2(0, 112),
+                RedColor
+            );
+
+            selectText.GetComponent<TextMeshProUGUI>().fontStyle =
+                FontStyles.Bold;
+
+            GameObject soundDisplay = CreatePanel(
+                panel.transform,
+                new Vector2(500, 100),
+                new Vector2(0, 48),
+                BlackColor
+            );
+
+            AddBorder(soundDisplay, RedColor, 1f);
+
+            GameObject soundText = CreateText(
+                soundDisplay.transform,
+                "",
+                30,
+                Vector2.zero,
+                RedColor
+            );
+
+            soundNameText =
                 soundText.GetComponent<TextMeshProUGUI>();
 
-            UpdateSoundText(soundLabel);
+            soundNameText.fontStyle = FontStyles.Bold;
+            soundNameText.enableWordWrapping = false;
+            soundNameText.overflowMode = TextOverflowModes.Ellipsis;
 
-            GameObject previous =
-                CreateButton(
-                    background.transform,
-                    "<",
-                    new Vector2(-150, -50)
-                );
-
-            previous
-            .GetComponent<Button>()
-            .onClick
-            .AddListener(
-                () =>
-                {
-                    PreviousSound();
-                    UpdateSoundText(soundLabel);
-                }
+            previousButton = CreateStyledButton(
+                panel.transform,
+                "‹",
+                new Vector2(-315, 48),
+                new Vector2(70, 70)
             );
 
-            GameObject next =
-                CreateButton(
-                    background.transform,
-                    ">",
-                    new Vector2(150, -50)
-                );
+            previousButton.onClick.AddListener(() =>
+            {
+                PreviousSound();
+                UpdateMenuDisplay();
+            });
 
-            next
-            .GetComponent<Button>()
-            .onClick
-            .AddListener(
-                () =>
-                {
-                    NextSound();
-                    UpdateSoundText(soundLabel);
-                }
+            nextButton = CreateStyledButton(
+                panel.transform,
+                "›",
+                new Vector2(315, 48),
+                new Vector2(70, 70)
             );
 
-            GameObject preview =
-                CreateButton(
-                    background.transform,
-                    "Preview",
-                    new Vector2(0, -100)
-                );
+            nextButton.onClick.AddListener(() =>
+            {
+                NextSound();
+                UpdateMenuDisplay();
+            });
 
-            preview
-            .GetComponent<Button>()
-            .onClick
-            .AddListener(
-                () =>
-                {
-                    PlaySelectedSound();
-                }
+            GameObject counter = CreateText(
+                panel.transform,
+                "",
+                17,
+                new Vector2(0, -18),
+                SecondaryRedColor
             );
 
-            GameObject close =
-                CreateButton(
-                    background.transform,
-                    "Save & Close",
-                    new Vector2(0, -150)
-                );
+            soundCounterText =
+                counter.GetComponent<TextMeshProUGUI>();
 
-            close
-                .GetComponent<Button>()
-                .onClick
-                .AddListener(
-                SaveAndClose
+            soundCounterText.fontStyle = FontStyles.Bold;
+
+            previewButton = CreateStyledButton(
+                panel.transform,
+                ">  PREVIEW SOUND",
+                new Vector2(0, -72),
+                new Vector2(300, 48)
+            );
+
+            previewButton.onClick.AddListener(PlaySelectedSound);
+
+            CreateDivider(
+                panel.transform,
+                new Vector2(0, -115)
+            );
+
+            saveButton = CreateStyledButton(
+                panel.transform,
+                ">  SAVE",
+                new Vector2(-125, -165),
+                new Vector2(190, 50)
+            );
+
+            saveButton.onClick.AddListener(SaveSelection);
+
+            closeButton = CreateStyledButton(
+                panel.transform,
+                ">  CLOSE",
+                new Vector2(125, -165),
+                new Vector2(190, 50)
+            );
+
+            closeButton.onClick.AddListener(CloseMenu);
+
+            menu.SetActive(false);
+        }
+
+        private static void UpdateMenuDisplay()
+        {
+            if (soundNameText == null)
+                return;
+
+            if (SoundIDs.Count == 0)
+            {
+                soundNameText.text = "NO SOUNDS FOUND";
+
+                if (soundCounterText != null)
+                    soundCounterText.text = "0 / 0";
+
+                SetButtonInteractable(previousButton, false);
+                SetButtonInteractable(nextButton, false);
+                SetButtonInteractable(previewButton, false);
+                SetButtonInteractable(saveButton, false);
+
+                return;
+            }
+
+            if (soundIndex < 0)
+                soundIndex = 0;
+
+            if (soundIndex >= SoundIDs.Count)
+                soundIndex = 0;
+
+            SelectedSound = SoundIDs[soundIndex];
+
+            soundNameText.text =
+                FormatSoundName(SelectedSound);
+
+            if (soundCounterText != null)
+            {
+                soundCounterText.text =
+                    "SOUND " +
+                    (soundIndex + 1) +
+                    " / " +
+                    SoundIDs.Count;
+            }
+
+            SetButtonInteractable(
+                previousButton,
+                SoundIDs.Count > 1
+            );
+
+            SetButtonInteractable(
+                nextButton,
+                SoundIDs.Count > 1
+            );
+
+            SetButtonInteractable(
+                previewButton,
+                true
+            );
+
+            SetButtonInteractable(
+                saveButton,
+                true
             );
         }
 
-
-        private static void SaveAndClose()
+        private static void SaveSelection()
         {
-            DeathTunesPlugin.Log.LogInfo(
-                "===== SAVING DEATH SOUND ====="
-            );
+            DeathTunesPlugin.Log.LogInfo("Saving death sound...");
 
             DeathTunesPlugin.Log.LogInfo(
                 "Selected sound: " + SelectedSound
@@ -314,8 +462,6 @@ namespace DeathTunes
                 );
 
                 PendingSoundSelection = SelectedSound;
-
-                menu.SetActive(false);
                 return;
             }
 
@@ -329,79 +475,73 @@ namespace DeathTunes
                 );
 
                 PendingSoundSelection = SelectedSound;
-
-                menu.SetActive(false);
                 return;
             }
 
             SendPlayerSound(localPlayer);
-
-            menu.SetActive(false);
         }
+
         public static void CloseMenu()
         {
+            DeathTunesPlugin.Log.LogInfo(
+                "Closing DeathTunes customization menu."
+            );
+
             if (menu != null)
-            {
                 menu.SetActive(false);
-            }
-        }
-
-        private static void UpdateSoundText(
-            TextMeshProUGUI text)
-        {
-            if (SoundIDs.Count == 0)
-            {
-                text.text =
-                    "No sounds found";
-                return;
-            }
-
-            text.text =
-                SoundIDs[soundIndex];
         }
 
         public static void NextSound()
         {
+            if (SoundIDs.Count == 0)
+                return;
+
             soundIndex++;
 
             if (soundIndex >= SoundIDs.Count)
                 soundIndex = 0;
 
-            SelectedSound =
-                SoundIDs[soundIndex];
+            SelectedSound = SoundIDs[soundIndex];
 
             DeathTunesPlugin.Log.LogInfo(
-                "Changed selected sound to: "
-                + SelectedSound
+                "Changed selected sound to: " + SelectedSound
             );
         }
 
         public static void PreviousSound()
         {
+            if (SoundIDs.Count == 0)
+                return;
+
             soundIndex--;
 
             if (soundIndex < 0)
-                soundIndex =
-                    SoundIDs.Count - 1;
+                soundIndex = SoundIDs.Count - 1;
 
-            SelectedSound =
-                SoundIDs[soundIndex];
+            SelectedSound = SoundIDs[soundIndex];
 
             DeathTunesPlugin.Log.LogInfo(
-                "Changed selected sound to: "
-                + SelectedSound
+                "Changed selected sound to: " + SelectedSound
             );
         }
 
         private static void PlaySelectedSound()
         {
-            if (
-                Sounds.ContainsKey(
-                    SelectedSound
-                ))
+            DeathTunesPlugin.Log.LogInfo(
+                "Previewing death sound: " + SelectedSound
+            );
+
+            if (Sounds.ContainsKey(SelectedSound))
             {
                 DeathTunesPlugin.PlayClip(
                     Sounds[SelectedSound]
+                );
+            }
+            else
+            {
+                DeathTunesPlugin.Log.LogWarning(
+                    "Cannot preview sound. Sound not found: " +
+                    SelectedSound
                 );
             }
         }
@@ -409,27 +549,24 @@ namespace DeathTunes
         private static GameObject CreatePanel(
             Transform parent,
             Vector2 size,
-            Vector2 position)
+            Vector2 position,
+            Color color)
         {
-            GameObject obj =
-                new GameObject(
-                    "Panel"
-                );
+            GameObject obj = new GameObject("Panel");
 
-            obj.transform.SetParent(
-                parent
-            );
+            obj.transform.SetParent(parent, false);
 
             RectTransform rect =
                 obj.AddComponent<RectTransform>();
 
-            rect.sizeDelta =
-                size;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
 
-            rect.anchoredPosition =
-                position;
-
-            obj.AddComponent<Image>();
+            Image image = obj.AddComponent<Image>();
+            image.color = color;
 
             return obj;
         }
@@ -438,90 +575,254 @@ namespace DeathTunes
             Transform parent,
             string value,
             int size,
-            Vector2 position)
+            Vector2 position,
+            Color color)
         {
-            GameObject obj =
-                new GameObject(
-                    "Text"
-                );
+            GameObject obj = new GameObject("Text");
 
-            obj.transform.SetParent(
-                parent
-            );
+            obj.transform.SetParent(parent, false);
 
             RectTransform rect =
                 obj.AddComponent<RectTransform>();
 
-            rect.sizeDelta =
-                new Vector2(
-                    400,
-                    50
-                );
-
-            rect.anchoredPosition =
-                position;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(600, 50);
+            rect.anchoredPosition = position;
 
             TextMeshProUGUI text =
                 obj.AddComponent<TextMeshProUGUI>();
 
-            text.text =
-                value;
+            text.text = value;
+            text.fontSize = size;
+            text.color = color;
+            text.alignment = TextAlignmentOptions.Center;
+            text.enableWordWrapping = true;
+            text.raycastTarget = false;
 
-            text.fontSize =
-                size;
-
-            text.alignment =
-                TextAlignmentOptions.Center;
+            if (gameFont != null)
+                text.font = gameFont;
 
             return obj;
         }
 
-        private static GameObject CreateButton(
+        private static Button CreateStyledButton(
             Transform parent,
             string value,
-            Vector2 position)
+            Vector2 position,
+            Vector2 size)
         {
-            GameObject obj =
-                new GameObject(
-                    value
-                );
+            GameObject obj = new GameObject("Button");
 
-            obj.transform.SetParent(
-                parent
-            );
+            obj.transform.SetParent(parent, false);
 
             RectTransform rect =
                 obj.AddComponent<RectTransform>();
 
-            rect.sizeDelta =
-                new Vector2(
-                    120,
-                    40
-                );
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
 
-            rect.anchoredPosition =
-                position;
+            GameObject border = new GameObject("Border");
+            border.transform.SetParent(obj.transform, false);
 
-            Image image =
-                obj.AddComponent<Image>();
+            RectTransform borderRect =
+                border.AddComponent<RectTransform>();
 
-            image.color =
-                Color.gray;
+            borderRect.anchorMin = Vector2.zero;
+            borderRect.anchorMax = Vector2.one;
+            borderRect.offsetMin = Vector2.zero;
+            borderRect.offsetMax = Vector2.zero;
+
+            Image borderImage =
+                border.AddComponent<Image>();
+
+            borderImage.color = RedColor;
+            borderImage.raycastTarget = false;
+
+            GameObject background =
+                new GameObject("Background");
+
+            background.transform.SetParent(obj.transform, false);
+
+            RectTransform backgroundRect =
+                background.AddComponent<RectTransform>();
+
+            backgroundRect.anchorMin = Vector2.zero;
+            backgroundRect.anchorMax = Vector2.one;
+            backgroundRect.offsetMin = new Vector2(2f, 2f);
+            backgroundRect.offsetMax = new Vector2(-2f, -2f);
+
+            Image backgroundImage =
+                background.AddComponent<Image>();
+
+            backgroundImage.color = BlackColor;
 
             Button button =
                 obj.AddComponent<Button>();
 
-            GameObject textObj =
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = backgroundImage;
+
+            bool isArrow =
+                value == "‹" ||
+                value == "›";
+
+            Color textColor =
+                isArrow
+                    ? WhiteColor
+                    : RedColor;
+
+            GameObject textObject =
                 CreateText(
-                    obj.transform,
+                    background.transform,
                     value,
-                    18,
-                    Vector2.zero
+                    isArrow ? 38 : 18,
+                    Vector2.zero,
+                    textColor
                 );
 
-            return obj;
+            TextMeshProUGUI text =
+                textObject.GetComponent<TextMeshProUGUI>();
+
+            text.fontStyle = FontStyles.Bold;
+            text.raycastTarget = false;
+
+            ButtonHoverHandler hoverHandler =
+                obj.AddComponent<ButtonHoverHandler>();
+
+            hoverHandler.Background = backgroundImage;
+            hoverHandler.Text = text;
+            hoverHandler.IsArrow = isArrow;
+            hoverHandler.NormalBackgroundColor = BlackColor;
+            hoverHandler.HoverBackgroundColor = RedColor;
+            hoverHandler.NormalTextColor =
+                isArrow ? WhiteColor : RedColor;
+            hoverHandler.HoverTextColor =
+                isArrow ? WhiteColor : BlackColor;
+
+            return button;
         }
 
-    }
+        private class ButtonHoverHandler :
+            MonoBehaviour,
+            IPointerEnterHandler,
+            IPointerExitHandler
+        {
+            public Image Background;
+            public TextMeshProUGUI Text;
+            public bool IsArrow;
+            public Color NormalBackgroundColor;
+            public Color HoverBackgroundColor;
+            public Color NormalTextColor;
+            public Color HoverTextColor;
 
+            public void OnPointerEnter(
+                PointerEventData eventData)
+            {
+                if (IsArrow)
+                    return;
+
+                if (Background != null)
+                    Background.color = HoverBackgroundColor;
+
+                if (Text != null)
+                    Text.color = HoverTextColor;
+            }
+
+            public void OnPointerExit(
+                PointerEventData eventData)
+            {
+                if (Background != null)
+                    Background.color = NormalBackgroundColor;
+
+                if (Text != null)
+                    Text.color = NormalTextColor;
+            }
+        }
+
+        private static void AddBorder(
+            GameObject target,
+            Color color,
+            float thickness)
+        {
+            Outline outline =
+                target.AddComponent<Outline>();
+
+            outline.effectColor = color;
+            outline.effectDistance =
+                new Vector2(thickness, thickness);
+            outline.useGraphicAlpha = true;
+        }
+
+        private static void CreateDivider(
+            Transform parent,
+            Vector2 position)
+        {
+            GameObject divider =
+                new GameObject("Divider");
+
+            divider.transform.SetParent(parent, false);
+
+            RectTransform rect =
+                divider.AddComponent<RectTransform>();
+
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(600, 1);
+            rect.anchoredPosition = position;
+
+            Image image =
+                divider.AddComponent<Image>();
+
+            image.color =
+                new Color32(247, 0, 7, 180);
+        }
+
+        private static void SetButtonInteractable(
+            Button button,
+            bool interactable)
+        {
+            if (button == null)
+                return;
+
+            button.interactable = interactable;
+        }
+
+        private static string FormatSoundName(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+                return "UNKNOWN SOUND";
+
+            string formatted =
+                id.Replace("_", " ")
+                  .Replace("-", " ");
+
+            string[] words =
+                formatted.Split(
+                    new char[] { ' ' },
+                    StringSplitOptions.RemoveEmptyEntries
+                );
+
+            for (int i = 0; i < words.Length; i++)
+            {
+                if (words[i].Length == 0)
+                    continue;
+
+                words[i] =
+                    char.ToUpper(words[i][0]) +
+                    (
+                        words[i].Length > 1
+                            ? words[i].Substring(1).ToLower()
+                            : ""
+                    );
+            }
+
+            return string.Join(" ", words).ToUpper();
+        }
+    }
 }

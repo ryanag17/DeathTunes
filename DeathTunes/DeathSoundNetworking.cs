@@ -15,7 +15,6 @@ namespace DeathTunes
             new Dictionary<ulong, string>();
 
         public static LNetworkMessage<SoundSelectionData> SoundMessage;
-
         public static LNetworkMessage<string> RequestMessage;
 
         public static void Initialize()
@@ -94,8 +93,8 @@ namespace DeathTunes
         }
 
         private static void OnRequestReceived(
-        string unused,
-        ulong sender)
+            string unused,
+            ulong sender)
         {
             DeathTunesPlugin.Log.LogInfo(
                 $"Sending all sounds to client {sender}"

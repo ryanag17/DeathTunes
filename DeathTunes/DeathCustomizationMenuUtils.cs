@@ -25,8 +25,7 @@ namespace DeathTunes
                     mainButtonsTransform
                 );
 
-            deathButton.name =
-                "DeathTunesButton";
+            deathButton.name = "DeathTunesButton";
 
             Button button =
                 deathButton.GetComponent<Button>();
@@ -45,8 +44,7 @@ namespace DeathTunes
 
             if (text != null)
             {
-                text.text =
-                    "> Death Sounds";
+                text.text = "> Death Sounds";
             }
 
             List<GameObject> buttons =
@@ -82,10 +80,7 @@ namespace DeathTunes
                     obj.GetComponent<RectTransform>();
 
                 rect.anchoredPosition +=
-                    new Vector2(
-                        0,
-                        spacing
-                    );
+                    new Vector2(0, spacing);
             }
 
             RectTransform quitRect =
@@ -96,10 +91,7 @@ namespace DeathTunes
 
             deathRect.anchoredPosition =
                 quitRect.anchoredPosition +
-                new Vector2(
-                    0,
-                    spacing
-                );
+                new Vector2(0, spacing);
 
             DeathTunesPlugin.Log.LogInfo(
                 "DeathTunes button positioned successfully."

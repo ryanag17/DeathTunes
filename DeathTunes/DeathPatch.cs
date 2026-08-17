@@ -8,20 +8,14 @@ namespace DeathTunes
     {
         [HarmonyPatch("Update")]
         [HarmonyPostfix]
-        static void CheckDeath(
-            PlayerControllerB __instance)
+        static void CheckDeath(PlayerControllerB __instance)
         {
             if (__instance == null)
                 return;
 
-            ulong steamID =
-                __instance.playerSteamId;
-
-            bool dead =
-                __instance.isPlayerDead;
-
-            bool previous =
-                false;
+            ulong steamID = __instance.playerSteamId;
+            bool dead = __instance.isPlayerDead;
+            bool previous = false;
 
             DeathTunesPlugin.LastDeathState.TryGetValue(
                 steamID,
@@ -31,8 +25,7 @@ namespace DeathTunes
             if (dead && !previous)
             {
                 DeathTunesPlugin.Log.LogInfo(
-                    "DEATH DETECTED: Player "
-                    + steamID
+                    "DEATH DETECTED: Player " + steamID
                 );
 
                 PlayerDeathSoundManager.PlayPlayerDeathSound(
@@ -40,8 +33,7 @@ namespace DeathTunes
                 );
             }
 
-            DeathTunesPlugin.LastDeathState[steamID] =
-                dead;
+            DeathTunesPlugin.LastDeathState[steamID] = dead;
         }
     }
 }

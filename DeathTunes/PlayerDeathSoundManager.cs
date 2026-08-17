@@ -5,14 +5,12 @@ namespace DeathTunes
 {
     public static class PlayerDeathSoundManager
     {
-        public static void PlayPlayerDeathSound(
-            PlayerControllerB player)
+        public static void PlayPlayerDeathSound(PlayerControllerB player)
         {
             if (player == null)
                 return;
 
-            ulong steamID =
-                player.playerSteamId;
+            ulong steamID = player.playerSteamId;
 
             DeathTunesPlugin.Log.LogInfo(
                 $"Looking up death sound for SteamID: {steamID}"
@@ -20,25 +18,17 @@ namespace DeathTunes
 
             AudioClip clip = null;
 
-            if (
-                DeathSoundNetworking.PlayerSounds.TryGetValue(
-                    steamID,
-                    out string soundID
-                )
-            )
+            if (DeathSoundNetworking.PlayerSounds.TryGetValue(
+                steamID,
+                out string soundID))
             {
                 DeathTunesPlugin.Log.LogInfo(
                     $"Found sound entry: {steamID} -> {soundID}"
                 );
 
-                if (
-                    DeathCustomizationManager.Sounds.ContainsKey(
-                        soundID
-                    )
-                )
+                if (DeathCustomizationManager.Sounds.ContainsKey(soundID))
                 {
-                    clip =
-                        DeathCustomizationManager.Sounds[soundID];
+                    clip = DeathCustomizationManager.Sounds[soundID];
                 }
                 else
                 {
@@ -54,26 +44,19 @@ namespace DeathTunes
                 );
             }
 
-            if (
-                clip == null &&
-                player ==
-                StartOfRound.Instance.localPlayerController
-            )
+            if (clip == null &&
+                player == StartOfRound.Instance.localPlayerController)
             {
-                string saved =
-                    DeathTunesPlugin.SavedDeathSound.Value;
+                string saved = DeathTunesPlugin.SavedDeathSound.Value;
 
-                if (
-                    !string.IsNullOrEmpty(saved) &&
-                    DeathCustomizationManager.Sounds.ContainsKey(saved)
-                )
+                if (!string.IsNullOrEmpty(saved) &&
+                    DeathCustomizationManager.Sounds.ContainsKey(saved))
                 {
                     DeathTunesPlugin.Log.LogInfo(
                         $"Using local saved fallback sound: {saved}"
                     );
 
-                    clip =
-                        DeathCustomizationManager.Sounds[saved];
+                    clip = DeathCustomizationManager.Sounds[saved];
                 }
             }
 
@@ -90,9 +73,7 @@ namespace DeathTunes
                 $"Playing death sound for {steamID}: {clip.name}"
             );
 
-            DeathTunesPlugin.PlayClip(
-                clip
-            );
+            DeathTunesPlugin.PlayClip(clip);
         }
     }
 }

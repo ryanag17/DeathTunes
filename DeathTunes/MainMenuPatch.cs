@@ -14,51 +14,37 @@ namespace DeathTunes
             if (__instance.isInitScene)
                 return;
 
-            DeathTunesPlugin.Log.LogInfo(
-                "DeathTunes injecting menu..."
-            );
+            DeathTunesPlugin.Log.LogInfo("DeathTunes injecting menu...");
 
-            __instance.StartCoroutine(
-                DelayedInjection()
-            );
+            __instance.StartCoroutine(DelayedInjection());
         }
 
         private static IEnumerator DelayedInjection()
         {
             yield return new WaitForSeconds(1f);
-
             InjectMenu();
         }
 
         private static void InjectMenu()
         {
             GameObject menuContainer =
-                GameObject.Find(
-                    "MenuContainer"
-                );
+                GameObject.Find("MenuContainer");
 
             if (menuContainer == null)
                 return;
 
             Transform mainButtons =
-                menuContainer.transform.Find(
-                    "MainButtons"
-                );
+                menuContainer.transform.Find("MainButtons");
 
             if (mainButtons == null)
                 return;
 
             Transform quitButton =
-                mainButtons.Find(
-                    "QuitButton"
-                );
+                mainButtons.Find("QuitButton");
 
             if (quitButton == null)
             {
-                DeathTunesPlugin.Log.LogError(
-                    "QuitButton missing!"
-                );
-
+                DeathTunesPlugin.Log.LogError("QuitButton missing!");
                 return;
             }
 

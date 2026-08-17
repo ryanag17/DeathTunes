@@ -22,11 +22,8 @@ namespace DeathTunes
                 "DeathTunes player connection sync started."
             );
 
-            __instance.StartCoroutine(
-                DelayedSync()
-            );
+            __instance.StartCoroutine(DelayedSync());
         }
-
 
         private static System.Collections.IEnumerator DelayedSync()
         {
@@ -44,18 +41,14 @@ namespace DeathTunes
                 yield break;
             }
 
-            ulong steamID =
-                player.playerSteamId;
+            ulong steamID = player.playerSteamId;
 
             DeathTunesPlugin.Log.LogInfo(
                 $"Local player found. SteamID: {steamID}"
             );
 
-            if (
-                !string.IsNullOrEmpty(
-                    DeathTunesPlugin.SavedDeathSound.Value
-                )
-            )
+            if (!string.IsNullOrEmpty(
+                DeathTunesPlugin.SavedDeathSound.Value))
             {
                 DeathSoundNetworking.SendSelection(
                     steamID,
@@ -79,7 +72,6 @@ namespace DeathTunes
                 "Requested all player death sounds."
             );
         }
-
 
         [HarmonyPatch("OnDestroy")]
         [HarmonyPostfix]
